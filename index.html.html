@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>メチオニン計算アプリ</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+    background: #f0f4f8;
+    color: #2d3748;
+    min-height: 100vh;
+  }
+
+  header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-inner { position: relative; }
+  header h1 { font-size: 1.3rem; font-weight: 700; }
+  header p { font-size: 0.7rem; opacity: 0.85; margin-top: 2px; }
+
+  .lang-toggle {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    border: 1.5px solid rgba(255,255,255,0.5);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .lang-btn {
+    padding: 4px 10px;
+    border: none;
+    background: transparent;
+    color: rgba(255,255,255,0.7);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .lang-btn.active {
+    background: rgba(255,255,255,0.25);
+    color: white;
+  }
+
+  /* タブバー */
+  .tab-bar {
+    display: flex;
+    overflow-x: auto;
+    background: white;
+    border-bottom: 2px solid #e2e8f0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    position: sticky;
+    top: 68px;
+    z-index: 99;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+
+  .tab-btn {
+    flex: 0 0 auto;
+    padding: 12px 18px;
+    border: none;
+    background: none;
+    font-size: 0.95rem;
+    color: #718096;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .tab-btn.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    background: #f7f8ff;
+  }
+
+  /* メインコンテンツ */
+  main { padding: 12px; max-width: 600px; margin: 0 auto; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* 凡例 */
+  .legend {
+    background: white;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 0.72rem;
+    color: #4a5568;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    line-height: 1.6;
+  }
+  .legend strong { color: #667eea; }
+
+  /* 食品カード */
+  .food-card {
+    background: white;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    transition: box-shadow 0.2s;
+  }
+  .food-card:active { box-shadow: 0 3px 12px rgba(0,0,0,0.15); }
+
+  .food-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 10px;
+  }
+  .food-name-en {
+    font-size: 0.68rem;
+    color: #a0aec0;
+    font-weight: 400;
+    display: block;
+    margin-top: 1px;
+  }
+
+  /* グラム入力 */
+  .gram-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .gram-row label { font-size: 0.78rem; color: #718096; }
+  .gram-input {
+    width: 90px;
+    padding: 9px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    text-align: center;
+    color: #2d3748;
+    transition: border-color 0.2s;
+  }
+  .gram-input:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+
+  /* 栄養バー */
+  .nutrient-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 7px;
+    gap: 8px;
+  }
+  .nutrient-label {
+    width: 30px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .nutrient-label.met { color: #e53e3e; }
+  .nutrient-label.pro { color: #3182ce; }
+
+  .bar-track {
+    flex: 1;
+    height: 8px;
+    background: #edf2f7;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.3s ease;
+    min-width: 0;
+  }
+  .bar-fill.met { background: linear-gradient(90deg, #fc8181, #e53e3e); }
+  .bar-fill.pro { background: linear-gradient(90deg, #63b3ed, #3182ce); }
+
+  .nutrient-value {
+    width: 80px;
+    text-align: right;
+    font-size: 0.9rem;
+    color: #4a5568;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  /* アラートバッジ */
+  .badge {
+    display: inline-block;
+    font-size: 0.62rem;
+    padding: 2px 6px;
+    border-radius: 99px;
+    font-weight: 600;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+  .badge-low { background: #c6f6d5; color: #276749; }
+  .badge-mid { background: #fefcbf; color: #744210; }
+  .badge-high { background: #fed7d7; color: #9b2c2c; }
+  .badge-vhigh { background: #9b2c2c; color: #fff; }
+
+  /* 合計パネル */
+  .total-panel {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+  }
+  .total-panel h3 { font-size: 0.85rem; opacity: 0.9; margin-bottom: 10px; }
+  .total-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .total-item { text-align: center; }
+  .total-item .val {
+    font-size: 1.3rem;
+    font-weight: 700;
+    display: block;
+  }
+  .total-item .lbl {
+    font-size: 0.65rem;
+    opacity: 0.8;
+  }
+
+  .reset-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px;
+    background: rgba(255,255,255,0.2);
+    border: 1.5px solid rgba(255,255,255,0.4);
+    border-radius: 8px;
+    color: white;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .reset-btn:active { background: rgba(255,255,255,0.35); }
+
+  /* 出典 */
+  .source {
+    text-align: center;
+    font-size: 0.65rem;
+    color: #a0aec0;
+    padding: 12px;
+    margin-top: 8px;
+  }
+
+  .note-box {
+    background: #ebf8ff;
+    border-left: 3px solid #4299e1;
+    border-radius: 0 8px 8px 0;
+    padding: 8px 12px;
+    font-size: 0.72rem;
+    color: #2c5282;
+    margin-bottom: 12px;
+  }
+
+  /* 目安量ボタン */
+  .portion-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .portion-btn {
+    padding: 8px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 20px;
+    background: #f7fafc;
+    font-size: 0.88rem;
+    color: #4a5568;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .portion-btn:active, .portion-btn.selected {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+  }
+  .portion-label {
+    font-size: 0.72rem;
+    color: #718096;
+    margin-bottom: 4px;
+  }
+
+  /* 出典タグ */
+  .source-tag {
+    display: inline-block;
+    font-size: 0.6rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #edf2f7;
+    color: #718096;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  /* ── 全食品リスト ── */
+  .all-foods-list { padding: 4px 0; }
+  .all-food-row {
+    display: flex;
+    align-items: center;
+    padding: 13px 16px;
+    background: white;
+    border-bottom: 1px solid #f0f4f8;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .all-food-row:active { background: #f0f4f8; }
+  .all-food-icon { font-size: 1.1rem; margin-right: 10px; flex-shrink: 0; }
+  .all-food-name { font-size: 1rem; font-weight: 600; color: #2d3748; flex: 1; }
+  .all-food-cat {
+    font-size: 0.72rem;
+    color: #718096;
+    background: #edf2f7;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+    margin-left: 8px;
+  }
+  .all-food-badge { margin-left: 6px; }
+  .food-card.highlight {
+    animation: highlightPulse 1.5s ease;
+  }
+  @keyframes highlightPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(102,126,234,0.6); }
+    50%  { box-shadow: 0 0 0 8px rgba(102,126,234,0); }
+    100% { box-shadow: 0 0 0 0 rgba(102,126,234,0); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1 id="app-title">メチオニン計算アプリ</h1>
+    <p id="app-subtitle">日本食品標準成分表（八訂）・国民健康栄養調査準拠</p>
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="btn-ja" onclick="setLang('ja')">JA</button>
+      <button class="lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+</header>
+
+<!-- タブバー -->
+<div class="tab-bar" id="tabBar">
+  <button class="tab-btn" onclick="showAllFoods(this)" data-ja="📋 食品一覧" data-en="📋 All Foods">📋 食品一覧</button>
+  <button class="tab-btn active" onclick="switchTab('total')"    data-ja="📊 合計"     data-en="📊 Total">📊 合計</button>
+  <button class="tab-btn" onclick="switchTab('meat')"            data-ja="🥩 肉類"     data-en="🥩 Meat">🥩 肉類</button>
+  <button class="tab-btn" onclick="switchTab('fish')"            data-ja="🐟 魚介類"   data-en="🐟 Fish &amp; Seafood">🐟 魚介類</button>
+  <button class="tab-btn" onclick="switchTab('dairy')"           data-ja="🥛 乳製品・卵" data-en="🥛 Dairy &amp; Eggs">🥛 乳製品・卵</button>
+  <button class="tab-btn" onclick="switchTab('cereals')"         data-ja="🍚 穀類"     data-en="🍚 Cereals">🍚 穀類</button>
+  <button class="tab-btn" onclick="switchTab('potatoes')"        data-ja="🥔 いも類"   data-en="🥔 Potatoes">🥔 いも類</button>
+  <button class="tab-btn" onclick="switchTab('pulses')"          data-ja="🫘 豆類"     data-en="🫘 Legumes">🫘 豆類</button>
+  <button class="tab-btn" onclick="switchTab('vegetables')"      data-ja="🥦 野菜類"   data-en="🥦 Vegetables">🥦 野菜類</button>
+  <button class="tab-btn" onclick="switchTab('fruits')"          data-ja="🍎 果物類"   data-en="🍎 Fruits">🍎 果物類</button>
+  <button class="tab-btn" onclick="switchTab('fungi')"           data-ja="🍄 きのこ類" data-en="🍄 Mushrooms">🍄 きのこ類</button>
+  <button class="tab-btn" onclick="switchTab('algae')"           data-ja="🌿 藻類"     data-en="🌿 Seaweed">🌿 藻類</button>
+  <button class="tab-btn" onclick="switchTab('reference')"       data-ja="🧂 調味料・他" data-en="🧂 Condiments">🧂 調味料・他</button>
+</div>
+
+<main>
+
+<!-- 合計タブ -->
+<div class="section" id="tab-allfood"></div>
+<div class="section active" id="tab-total">
+  <div class="total-panel">
+    <h3 id="lbl-total-heading">選択中の食品 合計摂取量</h3>
+    <div class="total-grid">
+      <div class="total-item">
+        <span class="val" id="total-met">0</span>
+        <span class="lbl" id="lbl-met">Methionine (mg)</span>
+      </div>
+      <div class="total-item">
+        <span class="val" id="total-pro">0.0</span>
+        <span class="lbl" id="lbl-pro">Protein (g)</span>
+      </div>
+    </div>
+    <button class="reset-btn" id="btn-reset" onclick="resetAll()">🔄 全てリセット</button>
+  </div>
+
+  <div class="note-box" id="lbl-note">
+    各カテゴリタブで食品の摂取量(g)を入力すると、ここに合計が表示されます。<br>
+    バーの長さはカテゴリ内の最大値を100%として表示しています。
+  </div>
+
+  <div class="legend">
+    <strong>Met</strong> <span id="lbl-met-long">Methionine</span> &nbsp;|&nbsp;
+    <strong>Pro</strong> <span id="lbl-pro-long">Protein</span><br>
+    <span id="lbl-unit">Met: mg / intake (g) &nbsp;|&nbsp; Pro: g / intake (g)</span><br>
+    <span style="background:#c6f6d5;padding:1px 5px;border-radius:4px;font-size:0.7rem;" id="lbl-low">Low</span>
+    <span style="background:#fefcbf;padding:1px 5px;border-radius:4px;font-size:0.7rem;" id="lbl-mid">Mid</span>
+    <span style="background:#fed7d7;padding:1px 5px;border-radius:4px;font-size:0.7rem;" id="lbl-high">High</span>
+    <span style="background:#9b2c2c;color:#fff;padding:1px 5px;border-radius:4px;font-size:0.7rem;" id="lbl-vhigh">Very High</span>
+    <span id="lbl-met-badge">methionine level</span>
+  </div>
+
+  <div id="summary-list"></div>
+</div>
+
+<!-- 肉類 -->
+<div class="section" id="tab-meat"></div>
+
+<!-- 魚介類 -->
+<div class="section" id="tab-fish"></div>
+
+<!-- 乳製品・卵 -->
+<div class="section" id="tab-dairy"></div>
+
+<!-- 穀類 -->
+<div class="section" id="tab-cereals"></div>
+
+<!-- いも類 -->
+<div class="section" id="tab-potatoes"></div>
+
+<!-- 豆類 -->
+<div class="section" id="tab-pulses"></div>
+
+<!-- 野菜類 -->
+<div class="section" id="tab-vegetables"></div>
+
+<!-- 果物類 -->
+<div class="section" id="tab-fruits"></div>
+
+<!-- きのこ類 -->
+<div class="section" id="tab-fungi"></div>
+
+<!-- 藻類 -->
+<div class="section" id="tab-algae"></div>
+
+<!-- 調味料・他 -->
+<div class="section" id="tab-reference"></div>
+
+<p class="source" id="source-text">
+  Methionine &amp; Protein values: Standard Tables of Food Composition in Japan, 8th ed., Supplementary Edition 2023 (MEXT, updated March 27, 2026)<br>
+  Food selection basis: National Health and Nutrition Survey, Japan 2023 (MHLW)
+</p>
+
+</main>
+
+<script>
+// ===================== 言語管理 =====================
+let lang = 'ja';
+
+const i18n = {
+  ja: {
+    appTitle: 'メチオニン計算アプリ',
+    appSubtitle: '日本食品標準成分表（八訂）・国民健康栄養調査準拠',
+    totalHeading: '選択中の食品 合計摂取量',
+    metLbl: 'メチオニン (mg)',
+    proLbl: 'タンパク質 (g)',
+    resetBtn: '🔄 全てリセット',
+    note: '各カテゴリタブで食品の摂取量(g)を入力すると、ここに合計が表示されます。<br>バーの長さはカテゴリ内の最大値を100%として表示しています。',
+    metLong: 'メチオニン', proLong: 'タンパク質',
+    unit: 'Met: mg / 入力重量(g)　|　Pro: g / 入力重量(g)',
+    low: '低', mid: '中', high: '高', vhigh: '超高', metBadge: 'メチオニン量の目安',
+    portionLabel: '目安量：',
+    intakeLabel: '摂取量:',
+    perHundred: '↑ 100g あたりの含有量',
+    emptyMsg: '各カテゴリタブで食品の摂取量(g)を入力してください',
+    sourceText: 'メチオニン・タンパク質値の出典：日本食品標準成分表（八訂）増補2023年（文部科学省, 2026年3月27日更新）<br>食品選定の根拠：令和5年国民健康・栄養調査（厚生労働省）における食品群別摂取量',
+    srcMap: {'八訂':'日本食品標準成分表（八訂）'},
+    catLegend: (cat) => `<strong>${cat.label}</strong>${cat.source && i18n.ja.srcMap[cat.source] ? `<span class="source-tag">${i18n.ja.srcMap[cat.source]}</span>` : ''} — 摂取量を入力またはボタンで選択してください。`,
+  },
+  en: {
+    appTitle: 'Methionine Calculator',
+    appSubtitle: 'Based on Standard Tables of Food Composition in Japan (8th ed.) & National Health and Nutrition Survey',
+    totalHeading: 'Total Intake from Selected Foods',
+    metLbl: 'Methionine (mg)',
+    proLbl: 'Protein (g)',
+    resetBtn: '🔄 Reset All',
+    note: 'Enter the amount (g) or select a portion size in each category tab to see the total here.<br>Bar length represents 100% = maximum value within each category.',
+    metLong: 'Methionine', proLong: 'Protein',
+    unit: 'Met: mg / intake (g)  |  Pro: g / intake (g)',
+    low: 'Low', mid: 'Mod', high: 'High', vhigh: 'Very High', metBadge: 'methionine level',
+    portionLabel: 'Portion size:',
+    intakeLabel: 'Amount:',
+    perHundred: '↑ per 100g',
+    emptyMsg: 'Enter amounts in each category tab to display totals here.',
+    sourceText: 'Methionine &amp; Protein values: Standard Tables of Food Composition in Japan, 8th ed., Supplementary Edition 2023 (MEXT, updated March 27, 2026)<br>Food selection basis: National Health and Nutrition Survey, Japan 2023 (MHLW)',
+    srcMap: {'八訂':'Standard Tables of Food Composition in Japan (8th ed.)'},
+    catLegend: (cat) => `<strong>${cat.enLabel || cat.label}</strong>${cat.source && i18n.en.srcMap[cat.source] ? `<span class="source-tag">${i18n.en.srcMap[cat.source]}</span>` : ''} — Enter amount (g) or select a portion size.`,
+  }
+};
+
+function setLang(l) {
+  lang = l;
+  document.getElementById('btn-ja').classList.toggle('active', l === 'ja');
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.documentElement.lang = l;
+
+  const t = i18n[l];
+  document.getElementById('app-title').textContent    = t.appTitle;
+  document.getElementById('app-subtitle').textContent = t.appSubtitle;
+  document.getElementById('lbl-total-heading').textContent = t.totalHeading;
+  document.getElementById('lbl-met').textContent      = t.metLbl;
+  document.getElementById('lbl-pro').textContent      = t.proLbl;
+  document.getElementById('btn-reset').textContent    = t.resetBtn;
+  document.getElementById('lbl-note').innerHTML       = t.note;
+  document.getElementById('lbl-met-long').textContent = t.metLong;
+  document.getElementById('lbl-pro-long').textContent = t.proLong;
+  document.getElementById('lbl-unit').textContent     = t.unit;
+  document.getElementById('lbl-low').textContent      = t.low;
+  document.getElementById('lbl-mid').textContent      = t.mid;
+  document.getElementById('lbl-high').textContent     = t.high;
+  document.getElementById('lbl-vhigh').textContent    = t.vhigh;
+  document.getElementById('lbl-met-badge').textContent = t.metBadge;
+  document.getElementById('source-text').innerHTML    = t.sourceText;
+
+  // タブラベル更新
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.textContent = btn.dataset[l] || btn.dataset.ja;
+  });
+
+  // カード再描画（全カテゴリを再ビルド）
+  Object.keys(foodData).forEach(catKey => {
+    const container = document.getElementById('tab-' + catKey);
+    if (container && container.dataset.built) {
+      container.innerHTML = '';
+      delete container.dataset.built;
+      if (catKey !== 'total') buildCategory(catKey);
+    }
+  });
+
+  updateSummary();
+  document.title = t.appTitle;
+}
+
+// met: mg/100g, pro: g/100g (日本食品標準成分表 八訂)
+const foodData = {
+  meat: {
+    label: '肉類', enLabel: 'Meat',
+    source: '八訂',
+    maxMet: 670, maxPro: 24,
+    items: [
+      { ja: '牛もも肉（皮下脂肪なし・生）', en: 'Beef, round, lean, raw',            met: 550, pro: 21.9, portions: [{label:'薄切り1枚', enLabel:'1 thin slice', g:30},{label:'100g', enLabel:'100g', g:100},{label:'150g', enLabel:'150g', g:150}] },
+      { ja: '牛ひき肉（生）',               en: 'Beef, ground, raw',                  met: 410, pro: 19.0, portions: [{label:'ハンバーグ1個分', enLabel:'1 hamburger patty', g:100},{label:'150g', enLabel:'150g', g:150}] },
+      { ja: '牛バラ肉（脂身つき・生）',     en: 'Beef, short rib, raw',               met: 330, pro: 11.0, portions: [{label:'薄切り1枚', enLabel:'1 thin slice', g:30},{label:'100g', enLabel:'100g', g:100}] },
+      { ja: '豚ロース（脂身つき・生）',     en: 'Pork, loin, raw',                    met: 540, pro: 19.3, portions: [{label:'薄切り1枚', enLabel:'1 thin slice', g:30},{label:'とんかつ用1枚', enLabel:'1 cutlet piece', g:120}] },
+      { ja: '豚もも（皮下脂肪なし・生）',   en: 'Pork, ham, lean, raw',               met: 600, pro: 22.1, portions: [{label:'薄切り1枚', enLabel:'1 thin slice', g:30},{label:'100g', enLabel:'100g', g:100}] },
+      { ja: '豚バラ（脂身つき・生）',       en: 'Pork, belly, raw',                   met: 340, pro: 14.4, portions: [{label:'薄切り1枚', enLabel:'1 thin slice', g:30},{label:'100g', enLabel:'100g', g:100}] },
+      { ja: '豚ひき肉（生）',               en: 'Pork, ground, raw',                  met: 460, pro: 17.7, portions: [{label:'100g', enLabel:'100g', g:100},{label:'150g', enLabel:'150g', g:150}] },
+      { ja: '豚レバー（生）',               en: 'Pork, liver, raw',                   met: 500, pro: 20.4, portions: [{label:'1切れ', enLabel:'1 slice', g:50},{label:'100g', enLabel:'100g', g:100}] },
+      { ja: '鶏むね肉（皮つき・生）',       en: 'Chicken breast, with skin, raw',     met: 550, pro: 21.3, portions: [{label:'1/2枚', enLabel:'1/2 breast', g:100},{label:'1枚', enLabel:'1 breast', g:200}] },
+      { ja: '鶏むね肉（皮なし・生）',       en: 'Chicken breast, without skin, raw',  met: 630, pro: 23.3, portions: [{label:'1/2枚', enLabel:'1/2 breast', g:100},{label:'1枚', enLabel:'1 breast', g:180}] },
+      { ja: '鶏もも肉（皮つき・生）',       en: 'Chicken thigh, with skin, raw',      met: 520, pro: 16.6, portions: [{label:'小1枚', enLabel:'1 small thigh', g:200},{label:'大1枚', enLabel:'1 large thigh', g:250}] },
+      { ja: '鶏もも肉（皮なし・生）',       en: 'Chicken thigh, without skin, raw',   met: 520, pro: 19.0, portions: [{label:'100g', enLabel:'100g', g:100},{label:'200g', enLabel:'200g', g:200}] },
+      { ja: '鶏ささみ（生）',               en: 'Chicken tenderloin, raw',            met: 670, pro: 23.9, portions: [{label:'1本', enLabel:'1 strip', g:60},{label:'2本', enLabel:'2 strips', g:120}] },
+      { ja: '鶏ひき肉（生）',               en: 'Chicken, ground, raw',               met: 450, pro: 17.5, portions: [{label:'100g', enLabel:'100g', g:100},{label:'150g', enLabel:'150g', g:150}] },
+      { ja: '鶏レバー（生）',               en: 'Chicken liver, raw',                 met: 470, pro: 18.9, portions: [{label:'50g', enLabel:'50g', g:50},{label:'100g', enLabel:'100g', g:100}] },
+      { ja: 'ウインナーソーセージ',         en: 'Wiener sausage',                     met: 290, pro: 13.2, portions: [{label:'1本(20g)', enLabel:'1 sausage (20g)', g:20},{label:'3本(60g)', enLabel:'3 sausages (60g)', g:60}] },
+      { ja: 'ロースハム',                   en: 'Ham, loin',                          met: 500, pro: 18.6, portions: [{label:'1枚(20g)', enLabel:'1 slice (20g)', g:20},{label:'3枚(60g)', enLabel:'3 slices (60g)', g:60}] },
+      { ja: 'ばらベーコン',                 en: 'Bacon, belly',                       met: 390, pro: 13.9, portions: [{label:'1枚(20g)', enLabel:'1 strip (20g)', g:20},{label:'3枚(60g)', enLabel:'3 strips (60g)', g:60}] },
+    ]
+  },
+  fish: {
+    label: '魚介類', enLabel: 'Fish & Seafood',
+    source: '八訂',
+    maxMet: 1100, maxPro: 41,
+    items: [
+      { ja: 'まあじ（生）',                     en: 'Horse mackerel, raw',          met: 580,  pro: 19.7, portions: [{label:'小1尾(80g)', g:80},{label:'1尾(150g)', g:150}] },
+      { ja: 'まいわし（生）',                   en: 'Sardine, raw',                 met: 570,  pro: 19.2, portions: [{label:'小1尾(60g)', g:60},{label:'1尾(100g)', g:100}] },
+      { ja: 'しろさけ（生）',                   en: 'Chum salmon, raw',             met: 690,  pro: 22.3, portions: [{label:'1切れ(80g)', g:80},{label:'1切れ(100g)', g:100}] },
+      { ja: '銀鮭（養殖・生）',                 en: 'Coho salmon, farmed, raw',     met: 590,  pro: 19.6, portions: [{label:'1切れ(80g)', g:80},{label:'1切れ(100g)', g:100}] },
+      { ja: 'まさば（生）',                     en: 'Mackerel, raw',                met: 690,  pro: 20.6, portions: [{label:'1切れ(100g)', g:100},{label:'半身(150g)', g:150}] },
+      { ja: 'さんま（皮つき・生）',             en: 'Pacific saury, raw',           met: 570,  pro: 17.4, portions: [{label:'小1尾(100g)', g:100},{label:'1尾(150g)', g:150}] },
+      { ja: 'まだい（養殖・生）',               en: 'Sea bream, farmed, raw',       met: 630,  pro: 20.9, portions: [{label:'1切れ(80g)', g:80},{label:'1切れ(120g)', g:120}] },
+      { ja: 'くろまぐろ赤身（天然・生）',       en: 'Bluefin tuna, lean, raw',      met: 760,  pro: 26.4, portions: [{label:'刺身5切れ(80g)', g:80},{label:'100g', g:100}] },
+      { ja: 'ぶり（生）',                       en: 'Yellowtail, raw',              met: 680,  pro: 21.4, portions: [{label:'1切れ(80g)', g:80},{label:'1切れ(100g)', g:100}] },
+      { ja: 'めかじき（生）',                   en: 'Swordfish, raw',               met: 530,  pro: 19.2, portions: [{label:'1切れ(80g)', g:80},{label:'1切れ(100g)', g:100}] },
+      { ja: 'うなぎ（養殖・生）',               en: 'Eel, farmed, raw',             met: 480,  pro: 17.1, portions: [{label:'蒲焼1串(100g)', g:100}] },
+      { ja: 'あさり（生）',                     en: 'Short-neck clam, raw',         met: 130,  pro:  6.0, portions: [{label:'むき身50g', g:50},{label:'むき身100g', g:100}] },
+      { ja: 'かき（養殖・生）',                 en: 'Oyster, farmed, raw',          met: 140,  pro:  6.9, portions: [{label:'3個(60g)', g:60},{label:'5個(100g)', g:100}] },
+      { ja: 'ほたて貝柱（生）',                 en: 'Scallop adductor, raw',        met: 390,  pro: 13.5, portions: [{label:'3個(90g)', g:90},{label:'5個(150g)', g:150}] },
+      { ja: 'くるまえび（養殖・生）',           en: 'Prawn, farmed, raw',           met: 530,  pro: 21.6, portions: [{label:'3尾(60g)', g:60},{label:'5尾(100g)', g:100}] },
+      { ja: 'するめいか（胴・皮なし・生）',     en: 'Japanese squid, mantle, raw',  met: 470,  pro: 17.9, portions: [{label:'1/2杯(100g)', g:100},{label:'1杯(200g)', g:200}] },
+      { ja: 'まぐろ缶詰（水煮・フレーク）',     en: 'Tuna, canned in water',        met: 450,  pro: 16.0, portions: [{label:'小缶1缶(70g)', g:70},{label:'大缶1缶(165g)', g:165}] },
+      { ja: 'さば缶詰（水煮）',                 en: 'Mackerel, canned in water',    met: 640,  pro: 20.9, portions: [{label:'1/2缶(95g)', g:95},{label:'1缶(190g)', g:190}] },
+      { ja: 'しらす干し（半乾燥品）',           en: 'Dried young sardine',          met: 1100, pro: 40.5, portions: [{label:'大さじ1(10g)', g:10},{label:'大さじ3(30g)', g:30}] },
+      { ja: '蒸しかまぼこ',                     en: 'Steamed fish cake',            met: 370,  pro: 12.0, portions: [{label:'1枚(100g)', g:100}] },
+      { ja: '焼き竹輪',                         en: 'Grilled fish paste roll',      met: 430,  pro: 12.2, portions: [{label:'1本(60g)', g:60},{label:'2本(120g)', g:120}] },
+    ]
+  },
+  dairy: {
+    label: '乳製品・卵', enLabel: 'Dairy & Eggs',
+    source: '八訂',
+    maxMet: 590, maxPro: 23,
+    items: [
+      { ja: '普通牛乳',             en: 'Whole milk',               met:  80, pro:  3.3, portions: [{label:'コップ半分(100ml)', g:103},{label:'コップ1杯(200ml)', g:206}] },
+      { ja: 'ヨーグルト（全脂無糖）', en: 'Plain yogurt, whole milk', met:  90, pro:  3.6, portions: [{label:'小1カップ(100g)', g:100},{label:'大1カップ(200g)', g:200}] },
+      { ja: 'プロセスチーズ',       en: 'Process cheese',           met: 590, pro: 22.7, portions: [{label:'1切れ(18g)', g:18},{label:'2切れ(36g)', g:36}] },
+      { ja: 'カマンベールチーズ',   en: 'Camembert cheese',         met: 510, pro: 19.1, portions: [{label:'1切れ(25g)', g:25},{label:'2切れ(50g)', g:50}] },
+      { ja: 'クリームチーズ',       en: 'Cream cheese',             met: 210, pro:  8.2, portions: [{label:'大さじ1(15g)', g:15},{label:'50g', g:50}] },
+      { ja: '生クリーム（乳脂肪）', en: 'Heavy cream',              met:  44, pro:  2.0, portions: [{label:'大さじ1(15g)', g:15},{label:'50ml(50g)', g:50}] },
+      { ja: '鶏卵・全卵（生）',     en: 'Egg, whole, raw',          met: 410, pro: 12.2, portions: [{label:'小1個(45g)', g:45},{label:'M1個(55g)', g:55},{label:'L1個(60g)', g:60}] },
+      { ja: '鶏卵・全卵（ゆで）',   en: 'Egg, whole, boiled',       met: 430, pro: 12.5, portions: [{label:'1個(55g)', g:55},{label:'1個(60g)', g:60}] },
+      { ja: '鶏卵・卵黄（生）',     en: 'Egg, yolk, raw',           met: 390, pro: 16.5, portions: [{label:'1個分(17g)', g:17},{label:'2個分(34g)', g:34}] },
+      { ja: '鶏卵・卵白（生）',     en: 'Egg, white, raw',          met: 420, pro: 10.1, portions: [{label:'1個分(35g)', g:35},{label:'2個分(70g)', g:70}] },
+      { ja: 'うずら卵・全卵（生）', en: 'Quail egg, whole, raw',    met: 460, pro: 11.0, portions: [{label:'1個(10g)', g:10},{label:'5個(50g)', g:50}] },
+      { ja: '豆乳（無調整）', en: 'Soy milk, unsweetened', met: 90, pro: 3.6, portions: [{label:'100ml', enLabel:'100ml', g:100},{label:'200ml', enLabel:'200ml', g:200}] },
+    ]
+  },
+  cereals: {
+    label: '穀類', enLabel: 'Cereals',
+    source: '八訂',
+    maxMet: 510, maxPro: 29,
+    items: [
+      { ja: 'パン粉（乾燥）',      en: 'Bread crumbs, dry',         met: 182, pro: 14.6, portions: [{label:'大さじ1(6g)', g:6},{label:'大さじ3(18g)', g:18}] },
+      { ja: '食パン（市販）',      en: 'White bread',               met: 150, pro:  8.9, portions: [{label:'6枚切り1枚(60g)', g:60},{label:'8枚切り1枚(45g)', g:45}] },
+      { ja: 'とうもろこし（ゆで）',en: 'Corn, sweet, cooked',       met: 123, pro:  3.5, portions: [{label:'1/2本(100g)', g:100}] },
+      { ja: 'そば（ゆで）',        en: 'Noodles, soba',             met:  88, pro:  4.8, portions: [{label:'1人前(200g)', g:200}] },
+      { ja: 'そうめん（ゆで）',    en: 'Noodles, somen',            met:  60, pro:  3.5, portions: [{label:'1人前(200g)', g:200}] },
+      { ja: 'うどん（ゆで）',      en: 'Noodles, udon',             met:  44, pro:  2.6, portions: [{label:'1人前(200g)', g:200},{label:'1.5人前(300g)', g:300}] },
+      { ja: '白米（生）',          en: 'Rice, white, raw',          met: 170, pro:  6.1, portions: [{label:'茶碗1杯分(70g)', g:70},{label:'茶碗大盛(90g)', g:90}] },
+      { ja: 'スパゲッティ（乾）',  en: 'Spaghetti, dry',            met: 230, pro: 12.9, portions: [{label:'1人前(80g)', g:80},{label:'1人前(100g)', g:100}] },
+      { ja: '薄力粉（漂白）',      en: 'Wheat flour, bleached',     met: 140, pro:  8.0, portions: [{label:'大さじ1(9g)', g:9},{label:'100g', g:100}] },
+      { ja: '麩（小麦グルテン）',  en: 'Wheat gluten (Fu)',         met: 510, pro: 28.5, portions: [{label:'1個(5g)', g:5},{label:'10個(50g)', g:50}] },
+    ]
+  },
+  potatoes: {
+    label: 'いも類', enLabel: 'Potatoes',
+    source: '八訂',
+    maxMet: 33, maxPro: 2.0,
+    items: [
+      { ja: 'じゃがいも（生）', en: 'Potatoes, raw',       met: 33, pro: 1.8, portions: [{label:'小1個(100g)', g:100},{label:'中1個(150g)', g:150}] },
+      { ja: 'さつまいも（生）', en: 'Sweet potato, raw',   met: 22, pro: 1.2, portions: [{label:'小1/2本(100g)', g:100},{label:'中1本(200g)', g:200}] },
+      { ja: 'さといも（生）',   en: 'Taro, Japanese, raw', met: 33, pro: 1.5, portions: [{label:'1個(50g)', g:50},{label:'3個(150g)', g:150}] },
+    ]
+  },
+  pulses: {
+    label: '豆類', enLabel: 'Legumes',
+    source: '八訂',
+    maxMet: 560, maxPro: 34,
+    items: [
+      { ja: 'グリーンピース（生）', en: 'Peas, green, raw',          met:  73, pro:  6.9, portions: [{label:'大さじ2(20g)', g:20},{label:'50g', g:50}] },
+      { ja: '枝豆（ゆで）',         en: 'Soybeans, green, cooked',   met: 160, pro: 11.5, portions: [{label:'1/2カップ(50g)', g:50},{label:'1カップ(100g)', g:100}] },
+      { ja: '大豆（乾燥）',         en: 'Soybeans, mature, dry',     met: 560, pro: 33.8, portions: [{label:'大さじ1(10g)', g:10},{label:'50g', g:50}] },
+      { ja: '絹ごし豆腐',           en: 'Tofu, soft',                met:  74, pro:  5.3, portions: [{label:'1/4丁(75g)', g:75},{label:'1/2丁(150g)', g:150},{label:'1丁(300g)', g:300}] },
+      { ja: '木綿豆腐',             en: 'Tofu, firm',                met: 100, pro:  7.0, portions: [{label:'1/4丁(75g)', g:75},{label:'1/2丁(150g)', g:150}] },
+      { ja: '納豆',                 en: 'Natto',                     met: 340, pro: 16.5, portions: [{label:'1パック(45g)', g:45},{label:'2パック(90g)', g:90}] },
+      { ja: '油揚げ',               en: 'Fried tofu',                met: 250, pro: 23.4, portions: [{label:'1枚(30g)', g:30},{label:'2枚(60g)', g:60}] },
+    ]
+  },
+  vegetables: {
+    label: '野菜類', enLabel: 'Vegetables',
+    source: '八訂',
+    maxMet: 91, maxPro: 4.5,
+    items: [
+      { ja: 'アルファルファもやし（生）', en: 'Alfalfa sprouts, raw',        met: 17, pro: 1.6 },
+      { ja: 'アスパラガス（生）',         en: 'Asparagus, raw',              met: 24, pro: 2.6 },
+      { ja: 'ブロッコリー（生）',         en: 'Broccoli, raw',               met: 91, pro: 4.3 },
+      { ja: 'キャベツ（生）',             en: 'Cabbage, raw',                met: 13, pro: 1.3 },
+      { ja: '白菜（生）',                 en: 'Cabbage, Chinese, raw',       met:  7, pro: 0.8 },
+      { ja: 'にんじん（生）',             en: 'Carrots, raw',                met: 12, pro: 0.7 },
+      { ja: 'きゅうり（皮つき生）',       en: 'Cucumber, with peel, raw',    met: 10, pro: 1.0 },
+      { ja: 'なす（生）',                 en: 'Eggplant, raw',               met: 12, pro: 1.1 },
+      { ja: 'こまつな（生）',             en: 'Komatsuna, raw',              met: 20, pro: 1.5 },
+      { ja: 'ねぎ（葉の部分・生）',       en: 'Leeks, leaf, raw',            met: 30, pro: 1.4 },
+      { ja: 'レタス（生）',               en: 'Lettuce, iceberg, raw',       met:  8, pro: 0.6 },
+      { ja: 'れんこん（生）',             en: 'Lotus root, raw',             met: 20, pro: 1.9 },
+      { ja: 'たまねぎ（生）',             en: 'Onions, raw',                 met:  8, pro: 1.0 },
+      { ja: 'わけぎ（生）',               en: 'Onions, Welsh, raw',          met: 12, pro: 1.5 },
+      { ja: 'パセリ（生）',               en: 'Parsley, raw',                met: 33, pro: 4.0 },
+      { ja: 'かぼちゃ（生）',             en: 'Pumpkin, raw',                met: 14, pro: 1.6 },
+      { ja: '大根（生）',                 en: 'Radishes, oriental, raw',     met:  4, pro: 0.5 },
+      { ja: '大豆もやし（生）',           en: 'Soybean sprouts, raw',        met: 64, pro: 3.7 },
+      { ja: 'ほうれん草（生）',           en: 'Spinach, raw',                met: 29, pro: 2.2 },
+      { ja: 'トマト（生）',               en: 'Tomatoes, red, raw',          met:  6, pro: 0.7 },
+      { ja: 'かぶ（生）',                 en: 'Turnips, raw',                met:  7, pro: 0.7 },
+    ]
+  },
+  fruits: {
+    label: '果物類', enLabel: 'Fruits',
+    source: '八訂',
+    maxMet: 25, maxPro: 1.2,
+    items: [
+      { ja: 'りんご（生）',     en: 'Apples, raw',               met:  3, pro: 0.2 },
+      { ja: 'バナナ（生）',     en: 'Bananas, raw',              met: 14, pro: 1.1 },
+      { ja: 'さくらんぼ（生）', en: 'Cherries, sweet, raw',      met: 11, pro: 1.0 },
+      { ja: 'ぶどう（生）',     en: 'Grapes, raw',               met:  4, pro: 0.4 },
+      { ja: 'もも（生）',       en: 'Peaches, raw',              met:  4, pro: 0.6 },
+      { ja: 'なし（生）',       en: 'Pears, Asian, raw',         met:  3, pro: 0.3 },
+      { ja: '柿（生）',         en: 'Persimmons, Japanese, raw', met: 25, pro: 0.4 },
+      { ja: 'プラム（生）',     en: 'Plums, raw',                met:  3, pro: 0.7 },
+      { ja: 'いちご（生）',     en: 'Strawberries, raw',         met: 12, pro: 0.9 },
+      { ja: 'みかん（生）',     en: 'Tangerines, raw',           met:  7, pro: 0.7 },
+      { ja: 'すいか（生）',     en: 'Watermelon, raw',           met:  6, pro: 0.6 },
+    ]
+  },
+  fungi: {
+    label: 'きのこ類', enLabel: 'Mushrooms',
+    source: '八訂',
+    maxMet: 244, maxPro: 20,
+    items: [
+      { ja: 'えのき（生）',     en: 'Mushrooms, enoki, raw',    met:  27, pro:  2.7 },
+      { ja: 'しいたけ（生）',   en: 'Mushrooms, shiitake, raw', met:  24, pro:  3.0 },
+      { ja: '干しいたけ（乾）', en: 'Mushrooms, shiitake, dry', met: 244, pro: 19.3 },
+      { ja: 'しめじ（生）',     en: 'Mushrooms, shimeji, raw',  met:  42, pro:  2.7 },
+      { ja: 'まいたけ（生）', en: 'Mushrooms, maitake, raw', met: 21, pro: 2.0 },
+      { ja: 'エリンギ（生）', en: 'Mushrooms, eryngii, raw', met: 40, pro: 2.8 },
+    ]
+  },
+  algae: {
+    label: '藻類', enLabel: 'Seaweed',
+    source: '八訂',
+    maxMet: 831, maxPro: 42,
+    items: [
+      { ja: 'ひじき（乾）',         en: 'Seaweed, hijiki, dry',         met: 260, pro:  9.2 },
+      { ja: '昆布（乾）',           en: 'Seaweed, konbu, dry',          met: 140, pro:  6.1 },
+      { ja: '焼きのり（乾）',       en: 'Seaweed, laver, toasted, dry', met: 831, pro: 41.4 },
+      { ja: 'わかめ（乾）',         en: 'Seaweed, wakame, dry',         met: 348, pro: 18.0 },
+    ]
+  },
+  reference: {
+    label: '調味料・その他', enLabel: 'Condiments',
+    source: null,
+    maxMet: 260, maxPro: 13,
+    items: [
+      { ja: 'ケチャップ',           en: 'Ketchup',              met:  38, pro:  1.7, portions: [{label:'大さじ1(15g)', g:15}] },
+      { ja: 'マヨネーズ',           en: 'Mayonnaise',           met:  36, pro:  1.4, portions: [{label:'大さじ1(12g)', g:12}] },
+      { ja: '醤油（こいくち）',     en: 'Soy sauce',            met:  71, pro:  7.7, portions: [{label:'大さじ1(18g)', g:18}] },
+      { ja: 'ウスターソース',       en: 'Worcester sauce',      met:  26, pro:  1.1, portions: [{label:'大さじ1(16g)', g:16}] },
+      { ja: 'てんさい糖',           en: 'Beet sugar',           met:   0, pro:  0.0, portions: [{label:'小さじ1(3g)', g:3},{label:'大さじ1(9g)', g:9}] },
+      { ja: '米みそ（淡色辛みそ）', en: 'Rice miso, light',     met: 130, pro: 12.5, portions: [{label:'大さじ1(18g)', g:18},{label:'大さじ2(36g)', g:36}] },
+      { ja: 'みりん',               en: 'Sweet cooking sake',   met:   0, pro:  0.3, portions: [{label:'大さじ1(18g)', g:18}] },
+      { ja: 'バター（有塩）',       en: 'Butter, salted',       met:   0, pro:  0.6, portions: [{label:'小さじ1(4g)', g:4},{label:'大さじ1(12g)', g:12}] },
+      { ja: '植物油（なたね油）',   en: 'Canola oil',           met:   0, pro:  0.0, portions: [{label:'小さじ1(4g)', g:4},{label:'大さじ1(12g)', g:12}] },
+      { ja: '米油', en: 'Rice bran oil', met: 0, pro: 0.0, portions: [{label:'小さじ1(4g)', g:4},{label:'大さじ1(12g)', g:12}] },
+      { ja: 'コンソメ（固形）', en: 'Bouillon cube', met: 70, pro: 7.0, portions: [{label:'1個(5g)', g:5},{label:'2個(10g)', g:10}] },
+      { ja: 'カレー粉', en: 'Curry powder', met: 180, pro: 13.0, portions: [{label:'小さじ1(2g)', g:2},{label:'大さじ1(6g)', g:6}] },
+    ]
+  }
+};
+
+// ===================== 状態管理 =====================
+const grams = {}; // { categoryKey_index: gramValue }
+
+function getMetBadge(met) {
+  const t = i18n[lang];
+  if (met <= 50)       return `<span class="badge badge-low">${t.low}</span>`;
+  else if (met <= 150) return `<span class="badge badge-mid">${t.mid}</span>`;
+  else if (met <= 400) return `<span class="badge badge-high">${t.high}</span>`;
+  else                 return `<span class="badge badge-vhigh">${t.vhigh}</span>`;
+}
+
+function buildCategory(catKey) {
+  const cat = foodData[catKey];
+  const container = document.getElementById('tab-' + catKey);
+  if (!container || container.dataset.built) return;
+  container.dataset.built = '1';
+
+  const t = i18n[lang];
+  const leg = document.createElement('div');
+  leg.className = 'legend';
+  leg.innerHTML = t.catLegend(cat);
+  container.appendChild(leg);
+
+  cat.items.forEach((item, idx) => {
+    const key = catKey + '_' + idx;
+    const card = document.createElement('div');
+    card.className = 'food-card';
+    card.id = 'card-' + key;
+
+    const metPct = Math.min((item.met / cat.maxMet) * 100, 100);
+    const proPct = Math.min((item.pro / cat.maxPro) * 100, 100);
+
+    const portionBtns = item.portions
+      ? `<div class="portion-label">${t.portionLabel}</div>
+         <div class="portion-row" id="portions-${key}">
+           ${item.portions.map((p, pi) =>
+             `<button class="portion-btn" onclick="setPortionG('${catKey}','${key}',${p.g},${pi})">${lang === 'en' ? (p.enLabel || p.label) : p.label}</button>`
+           ).join('')}
+         </div>`
+      : '';
+
+    const foodName = lang === 'en' ? item.en : item.ja;
+    const foodSub  = lang === 'en' ? item.ja  : item.en;
+
+    card.innerHTML = `
+      <div class="food-name">
+        ${foodName}${getMetBadge(item.met)}
+        <span class="food-name-en">${foodSub}</span>
+      </div>
+      ${portionBtns}
+      <div class="gram-row">
+        <label>${t.intakeLabel}</label>
+        <input class="gram-input" type="number" min="0" max="9999" step="10"
+          value="${grams[key] || ''}"
+          placeholder="g"
+          id="inp-${key}"
+          oninput="onGramChange('${catKey}','${key}',this.value)"
+        >
+        <label>g</label>
+      </div>
+      <div class="nutrient-row">
+        <span class="nutrient-label met">Met</span>
+        <div class="bar-track"><div class="bar-fill met" id="bar-met-${key}" style="width:${metPct}%"></div></div>
+        <span class="nutrient-value" id="val-met-${key}">${item.met} mg</span>
+      </div>
+      <div class="nutrient-row">
+        <span class="nutrient-label pro">Pro</span>
+        <div class="bar-track"><div class="bar-fill pro" id="bar-pro-${key}" style="width:${proPct}%"></div></div>
+        <span class="nutrient-value" id="val-pro-${key}">${item.pro.toFixed(1)} g</span>
+      </div>
+      <div style="font-size:0.68rem;color:#a0aec0;margin-top:6px;text-align:right">
+        ${t.perHundred}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+
+// ===================== 目安量ボタン =====================
+function setPortionG(catKey, key, g, portionIdx) {
+  const inp = document.getElementById('inp-' + key);
+  if (inp) {
+    inp.value = g;
+    const btns = document.querySelectorAll(`#portions-${key} .portion-btn`);
+    btns.forEach((b, i) => b.classList.toggle('selected', i === portionIdx));
+    onGramChange(catKey, key, g);
+  }
+}
+
+// ===================== グラム変化 =====================
+function onGramChange(catKey, key, val) {
+  const g = parseFloat(val) || 0;
+  grams[key] = g;
+
+  const parts = key.split('_');
+  const idx = parseInt(parts[parts.length - 1]);
+  const item = foodData[catKey].items[idx];
+
+  const ratio = g / 100;
+  const metVal = (item.met * ratio).toFixed(0);
+  const proVal = (item.pro * ratio).toFixed(1);
+
+  document.getElementById('val-met-' + key).textContent = g > 0 ? `${metVal} mg` : `${item.met} mg`;
+  document.getElementById('val-pro-' + key).textContent = g > 0 ? `${proVal} g`  : `${item.pro.toFixed(1)} g`;
+
+  updateTotal();
+  updateSummary();
+}
+
+// ===================== 合計計算 =====================
+function updateTotal() {
+  let totalMet = 0, totalPro = 0;
+  for (const [key, g] of Object.entries(grams)) {
+    if (!g) continue;
+    const parts = key.split('_');
+    const idx = parseInt(parts[parts.length - 1]);
+    const catKey = parts.slice(0, parts.length - 1).join('_');
+    const item = foodData[catKey].items[idx];
+    const r = g / 100;
+    totalMet += item.met * r;
+    totalPro += item.pro * r;
+  }
+  document.getElementById('total-met').textContent = Math.round(totalMet);
+  document.getElementById('total-pro').textContent = totalPro.toFixed(1);
+}
+
+// ===================== 合計タブのサマリー =====================
+function updateSummary() {
+  const list = document.getElementById('summary-list');
+  const entries = [];
+
+  for (const [key, g] of Object.entries(grams)) {
+    if (!g) continue;
+    const parts = key.split('_');
+    const idx = parseInt(parts[parts.length - 1]);
+    const catKey = parts.slice(0, parts.length - 1).join('_');
+    const item = foodData[catKey].items[idx];
+    const r = g / 100;
+    entries.push({
+      ja: item.ja,
+      en: item.en,
+      g,
+      met: item.met * r,
+      pro: item.pro * r,
+    });
+  }
+
+  if (entries.length === 0) {
+    list.innerHTML = `<p style="text-align:center;color:#a0aec0;padding:20px;font-size:0.8rem;">${i18n[lang].emptyMsg}</p>`;
+    return;
+  }
+
+  entries.sort((a, b) => b.met - a.met);
+  list.innerHTML = entries.map(e => `
+    <div class="food-card">
+      <div class="food-name">${lang === 'en' ? e.en : e.ja} <span style="font-size:0.75rem;color:#718096;font-weight:400">${e.g}g</span></div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;text-align:center">
+        <div>
+          <div style="font-size:1rem;font-weight:700;color:#e53e3e">${Math.round(e.met)}</div>
+          <div style="font-size:0.65rem;color:#718096">Met(mg)</div>
+        </div>
+        <div>
+          <div style="font-size:1rem;font-weight:700;color:#3182ce">${e.pro.toFixed(1)}</div>
+          <div style="font-size:0.65rem;color:#718096">Pro(g)</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===================== タブ切り替え =====================
+function switchTab(key) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + key).classList.add('active');
+  document.getElementById('tab-allfood').classList.remove('active');
+
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+
+  if (key !== 'total') buildCategory(key);
+  else { updateTotal(); updateSummary(); }
+
+  event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+// ===================== リセット =====================
+function resetAll() {
+  Object.keys(grams).forEach(k => delete grams[k]);
+  document.querySelectorAll('.gram-input').forEach(inp => { inp.value = ''; });
+
+  Object.keys(foodData).forEach(catKey => {
+    foodData[catKey].items.forEach((item, idx) => {
+      const key = catKey + '_' + idx;
+      const vm = document.getElementById('val-met-' + key);
+      const vp = document.getElementById('val-pro-' + key);
+      if (vm) vm.textContent = `${item.met} mg`;
+      if (vp) vp.textContent = `${item.pro.toFixed(1)} g`;
+    });
+  });
+
+  updateTotal();
+  updateSummary();
+}
+
+
+// ===================== 全食品リストタブ =====================
+const catIcons = {
+  meat: '🥩', fish: '🐟', dairy: '🥛', cereals: '🍚',
+  potatoes: '🥔', pulses: '🫘', vegetables: '🥦', fruits: '🍎',
+  fungi: '🍄', algae: '🌿', reference: '🧂'
+};
+
+function showAllFoods(btn) {
+  // 全タブ非表示・全ボタン非アクティブ
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+
+  const panel = document.getElementById('tab-allfood');
+  panel.classList.add('active');
+
+  // 食品一覧を構築
+  let html = '<div class="all-foods-list">';
+  Object.entries(foodData).forEach(([catKey, cat]) => {
+    const icon = catIcons[catKey] || '🍽';
+    const catLabel = lang === 'ja' ? cat.label : (cat.enLabel || cat.label);
+    cat.items.forEach((item, idx) => {
+      const name = lang === 'ja' ? item.ja : (item.en || item.ja);
+      html += `<div class="all-food-row" onclick="jumpToFood('${catKey}',${idx})">
+        <span class="all-food-icon">${icon}</span>
+        <span class="all-food-name">${name}</span>
+        <span class="all-food-badge">${getMetBadge(item.met)}</span>
+        <span class="all-food-cat">${catLabel}</span>
+      </div>`;
+    });
+  });
+  html += '</div>';
+  panel.innerHTML = html;
+}
+
+function jumpToFood(catKey, idx) {
+  // 対象カテゴリタブのボタンを探してクリック
+  const tabMap = {
+    meat: '🥩 肉類', fish: '🐟 魚介類', dairy: '🥛 乳製品・卵',
+    cereals: '🍚 穀類', potatoes: '🥔 いも類', pulses: '🫘 豆類',
+    vegetables: '🥦 野菜類', fruits: '🍎 果物類',
+    fungi: '🍄 きのこ類', algae: '🌿 藻類', reference: '🧂 調味料・他'
+  };
+
+  // タブパネルに移動
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const ja = b.getAttribute('data-ja') || '';
+    if (ja === tabMap[catKey]) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+
+  const panel = document.getElementById('tab-' + catKey);
+  panel.classList.add('active');
+  buildCategory(catKey);
+
+  // 該当食品カードをハイライト
+  const key = catKey + '_' + idx;
+  setTimeout(() => {
+    const card = document.getElementById('card-' + key);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('highlight');
+      setTimeout(() => card.classList.remove('highlight'), 2000);
+    }
+  }, 200);
+}
+
+// 初期表示
+setLang('ja');
+updateSummary();
+</script>
+</body>
+</html>
